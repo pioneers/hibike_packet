@@ -9,6 +9,8 @@ use std::cell::RefCell;
 use cpython::{Python, PyResult, PyObject, PyBytes, PythonObject, PyErr, ToPyObject, PyTuple};
 use cpython::exc;
 
+use memchr::Memchr;
+
 
 /// Change a Rust panic into a Python exception. Put this on all wrapper methods unless
 /// you are absolutely certain it will not panic.
@@ -136,24 +138,21 @@ py_class!(class RingBuffer |py| {
 const DELIMITER: u8 = 0;
 fn process_buffer(gil: Python, buffer: RingBuffer) -> PyResult<PyObject> {
     let py_none = gil.None();
-    if let Some(idx) = buffer.find(gil, DELIMITER)? {
-        buffer.chop_front(gil, idx)?;
-        let data = buffer.get_data(gil)?;
-        match parse_bytes_raw(&data) {
+    let data = &buffer.get_data(gil)?;
+    if let Some(curr_idx) = memchr::memchr(DELIMITER, data) {
+        let chopped_data = &data[curr_idx...];
+        match parse_bytes_raw(chopped_data) {
             Some(packet) => {
-                // Chop off a byte so we don't parse this packet again
-                buffer.chop_front(gil, 1)?;
+                // Chop off the packet data so we don't parse it again
+                buffer.chop_front(gil, curr_idx + 1)?;
                 let tuple = PyTuple::new(gil, &[objectify(gil, packet.message_id),
                                                 objectify(gil, PyBytes::new(gil, &packet.payload))]);
                 return Ok(objectify(gil, tuple));
             }
             None => {
-                if buffer.count(gil, DELIMITER)? > 1 {
-                    buffer.chop_front(gil, 1)?;
-                    // Jump to the next packet.
-                    if let Some(next_index) = buffer.find(gil, DELIMITER)? {
-                        buffer.chop_front(gil, next_index)?;
-                    }
+                // Jump to the next packet, if there is one
+                if let Some(next_idx) = memchr::memchr(DELIMITER, &chopped_data[1..]) {
+                    buffer.chop_front(gil, curr_idx + next_idx + 1)?;
                 }
             }
         }
