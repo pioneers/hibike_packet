@@ -140,7 +140,7 @@ fn process_buffer(gil: Python, buffer: RingBuffer) -> PyResult<PyObject> {
     let py_none = gil.None();
     let data = &buffer.get_data(gil)?;
     if let Some(curr_idx) = memchr::memchr(DELIMITER, data) {
-        let chopped_data = &data[curr_idx...];
+        let chopped_data = &data[curr_idx..];
         match parse_bytes_raw(chopped_data) {
             Some(packet) => {
                 // Chop off the packet data so we don't parse it again
