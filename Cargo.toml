@@ -1,0 +1,20 @@
+[package]
+name = "hibike_packet"
+version = "0.1.0"
+authors = ["baby-bell <baby-bell@users.noreply.github.com>"]
+
+[lib]
+name = "hibike_packet"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[[bin]]
+name = "benchmark"
+path = "bin/benchmark.rs"
+
+[dependencies]
+cpython = "0.2"
+rand = "0.4"
+memchr = "2"
+
+[profile.release]
+panic = "abort"
