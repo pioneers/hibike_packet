@@ -7,10 +7,6 @@ authors = ["baby-bell <baby-bell@users.noreply.github.com>"]
 name = "hibike_packet"
 crate-type = ["cdylib", "staticlib", "rlib"]
 
-[[bin]]
-name = "benchmark"
-path = "bin/benchmark.rs"
-
 [dependencies]
 cpython = "0.2"
 rand = "0.4"

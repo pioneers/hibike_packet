@@ -80,12 +80,21 @@ fn parse_bytes_raw(bytes: &[u8]) -> Option<RawMessage> {
 }
 
 
-const DEFAULT_CAPACITY: usize = 8;
 py_class!(class RingBuffer |py| {
     data buffer: RefCell<VecDeque<u8>>;
 
     def __new__(_cls) -> PyResult<RingBuffer> {
         RingBuffer::create_instance(py, RefCell::new(VecDeque::new()))
+    }
+
+    def __len__(&self) -> PyResult<usize> {
+        Ok(self.buffer(py).borrow().len())
+    }
+
+    def __repr__(&self) -> PyResult<String> {
+        let buffer = self.buffer(py).borrow();
+        let entries: Vec<String> = buffer.iter().map(|x| format!(r#"\x{:02x}"#, x)).collect();
+        Ok(entries.join(""))
     }
 
     def find(&self, byte: u8) -> PyResult<Option<usize>> {
