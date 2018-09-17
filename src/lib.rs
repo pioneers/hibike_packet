@@ -49,11 +49,13 @@ fn objectify<T>(gil: Python, obj: T) -> PyObject where T: ToPyObject {
     obj.into_py_object(gil).into_object()
 }
 
+/// Raw message data.
 struct RawMessage {
     pub message_id: u8,
     pub payload: Vec<u8>,
 }
 
+/// Try to parse `bytes` into a packet.
 fn parse_bytes_raw(bytes: &[u8]) -> Option<RawMessage> {
     let (cobs_frame, msg_size) = (bytes[0], bytes[1] as usize);
     if cobs_frame != 0 || bytes.len() < msg_size + 2 {
@@ -122,7 +124,7 @@ py_class!(class RingBuffer |py| {
         Ok(py.None())
     }
 
-    def append(&self, data: PyBytes) -> PyResult<PyObject> {
+    def extend(&self, data: PyBytes) -> PyResult<PyObject> {
         let cloned_data: Vec<u8> = data.data(py).into();
         let mut buffer = self.buffer(py).borrow_mut();
         buffer.append(&mut cloned_data.into());
@@ -136,6 +138,11 @@ py_class!(class RingBuffer |py| {
 });
 
 const DELIMITER: u8 = 0;
+/// Search for packets in `buffer`, decoding them if found.
+///
+/// Returns:
+/// - Python `None` if no packet was found
+/// - Tuple of `(message_id, payload)` otherwise
 fn process_buffer(gil: Python, buffer: RingBuffer) -> PyResult<PyObject> {
     let py_none = gil.None();
     let data = &buffer.get_data(gil)?;
@@ -161,6 +168,7 @@ fn process_buffer(gil: Python, buffer: RingBuffer) -> PyResult<PyObject> {
     return Ok(py_none);
 }
 
+/// COBS-decode `data`.
 fn cobs_decode(data: &[u8]) -> Vec<u8> {
     let mut output = Vec::new();
     let mut index = 0usize;
