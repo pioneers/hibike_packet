@@ -5,12 +5,13 @@ authors = ["baby-bell <baby-bell@users.noreply.github.com>"]
 
 [lib]
 name = "hibike_packet"
-crate-type = ["cdylib", "staticlib", "rlib"]
+crate-type = ["cdylib"]
 
 [dependencies]
-cpython = "0.2"
+cpython = { git = "https://github.com/dgrunwald/rust-cpython.git", rev = "78df48952f279dd5937c9b5b945e1c37d0b107db" }
 rand = "0.4"
 memchr = "2"
+proptest = "0.7"
 
 [profile.release]
 panic = "abort"
