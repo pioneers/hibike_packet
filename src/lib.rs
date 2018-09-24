@@ -1,6 +1,11 @@
 #[macro_use]
 extern crate cpython;
+#[macro_use]
+extern crate lazy_static;
 extern crate memchr;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 
 use std::panic;
 use std::collections::VecDeque;
@@ -9,7 +14,11 @@ use std::cell::RefCell;
 use cpython::{Python, PyResult, PyObject, PyBytes, PythonObject, PyErr, ToPyObject, PyTuple};
 use cpython::exc;
 
-use memchr::Memchr;
+#[macro_use]
+mod utils;
+mod parsing;
+use parsing::{initialize_parser_maps, parse_device_data};
+use utils::objectify;
 
 
 /// Change a Rust panic into a Python exception. Put this on all wrapper methods unless
@@ -29,25 +38,6 @@ macro_rules! panic_to_except {
     };
 }
 
-/// Assert that a condition holds. Raises `AssertionError` should the condition fail to hold.
-macro_rules! py_assert {
-    ($py: ident, $cond: expr) => (
-        if !$cond {
-            return Err(PyErr::new::<exc::AssertionError, _>($py, concat!("Assertion failed: ", stringify!(cond))));
-        }
-    );
-
-    ($py: ident, $cond: expr, $msg: expr) => (
-        if !$cond {
-            return Err(PyErr::new::<exc::AssertionError, _>($py, format!("Assertion failed: {}", $msg)));
-        }
-    );
-}
-
-/// Turn something into a Python `object`.
-fn objectify<T>(gil: Python, obj: T) -> PyObject where T: ToPyObject {
-    obj.into_py_object(gil).into_object()
-}
 
 /// Raw message data.
 struct RawMessage {
@@ -203,6 +193,8 @@ fn checksum_wrapper(gil: Python, message: PyBytes) -> PyResult<u8> {
 py_module_initializer!(hibike_packet, inithibike_packet, PyInit_hibike_packet, |py, m| {
     m.add(py, "process_buffer", py_fn!(py, process_buffer(buffer: RingBuffer)))?;
     m.add(py, "checksum", py_fn!(py, checksum_wrapper(message: PyBytes)))?;
+    m.add(py, "initialize_parser_maps", py_fn!(py, initialize_parser_maps(config_data: &str)))?;
+    m.add(py, "parse_device_data", py_fn!(py, parse_device_data(payload: PyBytes, device_id: u16)))?;
     m.add_class::<RingBuffer>(py)?;
     Ok(())
 });
