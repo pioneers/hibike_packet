@@ -46,4 +46,4 @@ Building documentation for the source code is simple:
 ```bash
 cargo doc
 ```
-The built documentation is located in `doc/hibike_packet`.
+The built documentation is located in `target/doc/hibike_packet`.
