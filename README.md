@@ -22,7 +22,7 @@ A C extension for Hibike to increase its speed.
   + This function should be called before `parse_device_data`
 
 ### `parse_device_data()`
-- `parse_device_data(payload: bytes, device_id: int) -> List[(str, Union[float, bool, int])]
+- `parse_device_data(payload: bytes, device_id: int) -> List[(str, Union[float, bool, int])]`
   + Attempt to parse `payload` into device data
   + Raises `AssertionError` upon invalid device ID or bad packet format
 
