@@ -1,3 +1,4 @@
+//! Utility functions and macros.
 use ::cpython::{PyErr, Python, PyObject, PythonObject, ToPyObject, exc};
 
 /// Create a `ValueError` with a message `msg`.

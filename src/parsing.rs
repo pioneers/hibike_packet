@@ -1,3 +1,4 @@
+//! Parsing messages into device data.
 extern crate serde_json;
 extern crate byteorder;
 
@@ -14,7 +15,13 @@ use self::byteorder::{LittleEndian, ReadBytesExt};
 
 type DeviceId = u16;
 type ParamMap = HashMap<String, Parameter>;
-
+ 
+// In `hibike_message`, these are just global dictionaries.
+// We have to care about thread safety here, so we wrap the dicts in locks.
+// You may notice a lot of `expect`s; this is because a lock cannot be acquired
+// after another thread holding it has panicked; it is "poisoned".
+// This is impossible here, because there should be only one thread accessing
+// these maps.
 lazy_static! {
     static ref PARAM_MAP: RwLock<HashMap<DeviceId, ParamMap>> = {
         RwLock::new(HashMap::new())
@@ -46,6 +53,7 @@ lazy_static! {
     };
 }
 
+/// A sensor.
 #[derive(Clone, Deserialize)]
 pub struct Device {
     pub id: u16,
@@ -53,6 +61,7 @@ pub struct Device {
     pub params: Vec<Parameter>,
 }
 
+/// Possible parameter types.
 #[derive(Copy, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ParamType {
@@ -77,6 +86,7 @@ pub enum ParamType {
     Double
 }
 
+/// A device parameter.
 #[derive(Clone, PartialEq, Eq, Deserialize)]
 pub struct Parameter {
     pub name: String,
@@ -88,18 +98,21 @@ pub struct Parameter {
 }
 
 /// Initialize device parameters based on `config_data`, a JSON string.
+/// This function must be called before `parse_device_data`.
 pub fn initialize_parser_maps(gil: Python, config_data: &str) -> PyResult<PyObject> {
-    let mut parsed_map: HashMap<DeviceId, Device> = match serde_json::from_str(config_data) {
-        Ok(map) => map,
+    // Try to parse the list of devices
+    let mut parsed_data: Vec<Device> = match serde_json::from_str(config_data) {
+        Ok(dev_list) => dev_list,
         Err(e) => {
             return Err(value_error(gil, format!("could not parse device parameters: {}", e)));
         }
     };
     let mut device_map = DEVICE_MAP.write().expect("Device map lock was poisoned");
     let mut param_map = PARAM_MAP.write().expect("Param map lock was poisoned");
-    parsed_map.clone().into_iter().for_each(|(k, v)| { device_map.insert(k, v); });
 
-    for (device_id, device) in parsed_map.drain() {
+    parsed_data.into_iter().for_each(|device| device_map.insert(device.id, device));
+
+    for (device_id, device) in device_map.clone() {
         let mut params = HashMap::new();
         for param in device.params {
             params.insert(param.name.clone(), param);
@@ -112,7 +125,7 @@ pub fn initialize_parser_maps(gil: Python, config_data: &str) -> PyResult<PyObje
 
 /// Decode `bitmask` into human-readable names.
 fn decode_params(device_id: u16, bitmask: u16) -> Vec<String> {
-    let device_map = DEVICE_MAP.read().unwrap();
+    let device_map = DEVICE_MAP.read().expect("Device map lock was poisoned");
     let device = &device_map[&device_id];
     let mut names: Vec<String> = Vec::with_capacity(16);
     for i in 0..16 {
@@ -133,8 +146,13 @@ fn try_read<T>(gil: Python, maybe_param: io::Result<T>) -> PyResult<PyObject> wh
     Ok(objectify(gil, maybe_param.unwrap()))
 }
 
+/// Parse a `DeviceData` packet into a list of parameter names and values.
+///
+/// Throws `AssertionError` if:
+/// - `device_id` is invalid
+/// - `payload`'s length is too short
 pub fn parse_device_data(gil: Python, payload: PyBytes, device_id: u16) -> PyResult<PyList> {
-    let device_map = DEVICE_MAP.read().unwrap();
+    let device_map = DEVICE_MAP.read().expect("Device map lock was poisoned");
     py_assert!(gil, device_map.contains_key(&device_id), format!("invalid device_id: {}", device_id));
     let raw_bytes = payload.data(gil);
     py_assert!(gil, raw_bytes.len() >= 2, "Packet payload is too short");
@@ -144,7 +162,7 @@ pub fn parse_device_data(gil: Python, payload: PyBytes, device_id: u16) -> PyRes
     let names: Vec<String> = decode_params(device_id, bitmask);
 
     let mut values = Vec::with_capacity(16);
-    let param_map = &PARAM_MAP.read().unwrap()[&device_id];
+    let param_map = &PARAM_MAP.read().expect("Param map lock was poisoned")[&device_id];
     for name in &names {
         let value = match &param_map[name].kind {
             ParamType::Uint8 => try_read(gil, cursor.read_u8())?,

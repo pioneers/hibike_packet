@@ -1,3 +1,4 @@
+//! A C extension for Hibike to speed things up.
 #[macro_use]
 extern crate cpython;
 #[macro_use]
@@ -15,8 +16,8 @@ use cpython::{Python, PyResult, PyObject, PyBytes, PythonObject, PyErr, ToPyObje
 use cpython::exc;
 
 #[macro_use]
-mod utils;
-mod parsing;
+pub mod utils;
+pub mod parsing;
 use parsing::{initialize_parser_maps, parse_device_data};
 use utils::objectify;
 
@@ -39,14 +40,14 @@ macro_rules! panic_to_except {
 }
 
 
-/// Raw message data.
-struct RawMessage {
+/// Message data.
+struct Message {
     pub message_id: u8,
     pub payload: Vec<u8>,
 }
 
 /// Try to parse `bytes` into a packet.
-fn parse_bytes_raw(bytes: &[u8]) -> Option<RawMessage> {
+fn parse_bytes_raw(bytes: &[u8]) -> Option<Message> {
     let (cobs_frame, msg_size) = (bytes[0], bytes[1] as usize);
     if cobs_frame != 0 || bytes.len() < msg_size + 2 {
         return None;
@@ -67,7 +68,7 @@ fn parse_bytes_raw(bytes: &[u8]) -> Option<RawMessage> {
         return None;
     }
 
-    Some(RawMessage {
+    Some(Message {
         message_id: message_id,
         payload: payload.into()
     })
@@ -159,7 +160,7 @@ fn process_buffer(gil: Python, buffer: RingBuffer) -> PyResult<PyObject> {
 }
 
 /// COBS-decode `data`.
-fn cobs_decode(data: &[u8]) -> Vec<u8> {
+pub fn cobs_decode(data: &[u8]) -> Vec<u8> {
     let mut output = Vec::new();
     let mut index = 0usize;
     while index < data.len() {
