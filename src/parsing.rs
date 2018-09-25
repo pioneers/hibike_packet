@@ -110,7 +110,7 @@ pub fn initialize_parser_maps(gil: Python, config_data: &str) -> PyResult<PyObje
     let mut device_map = DEVICE_MAP.write().expect("Device map lock was poisoned");
     let mut param_map = PARAM_MAP.write().expect("Param map lock was poisoned");
 
-    parsed_data.into_iter().for_each(|device| device_map.insert(device.id, device));
+    parsed_data.into_iter().for_each(|device| { device_map.insert(device.id, device); });
 
     for (device_id, device) in device_map.clone() {
         let mut params = HashMap::new();
