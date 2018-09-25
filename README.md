@@ -3,6 +3,7 @@
 A C extension for Hibike to increase its speed.
 
 ## API
+See [the `typing` module](https://docs.python.org/3/library/typing.html) for definitions of `Union` and `List`.
 
 ### `RingBuffer`
 `RingBuffer` is a deque that stores bytes.
