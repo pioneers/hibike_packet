@@ -1,6 +1,6 @@
 [package]
 name = "hibike_packet"
-version = "0.3"
+version = "0.3.0"
 authors = ["baby-bell <baby-bell@users.noreply.github.com>"]
 
 [lib]
