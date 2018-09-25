@@ -21,4 +21,9 @@ Run
 ./build.sh
 ```
 
-This will produce a wheel in `build/dist`, which you can then install with `pip`.
+## Installing
+Assuming a successful build, there should be a `.whl` file located in
+`build/dist`. Just do
+```bash
+pip install build/dist/NAME_OF_FILE
+```
