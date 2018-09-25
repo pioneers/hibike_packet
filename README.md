@@ -39,3 +39,10 @@ Assuming a successful build, there should be a `.whl` file located in
 ```bash
 pip install build/dist/NAME_OF_FILE
 ```
+
+## Rust Documentation
+Building documentation for the source code is simple:
+```bash
+cargo doc
+```
+The built documentation is located in `doc/hibike_packet`.
